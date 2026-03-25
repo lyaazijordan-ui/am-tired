@@ -1,4 +1,5 @@
 import os
+from dotenv import load_dotenv
 import requests
 import streamlit as st
 from fpdf import FPDF
@@ -6,12 +7,15 @@ import numpy as np
 from sklearn.linear_model import LinearRegression
 
 # -----------------------------
-# API CONFIGURATION
+# LOAD ENVIRONMENT VARIABLES
 # -----------------------------
+load_dotenv()  # Load .env file
 API_KEY = os.getenv("OPENROUTER_API_KEY")
 
 if not API_KEY:
-    st.warning("⚠️ No OpenRouter API key found. AI features will be disabled.")
+    st.warning("⚠️ OpenRouter API key not found. AI features will be disabled.")
+else:
+    st.success("✅ OpenRouter API key loaded successfully")
 
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 
@@ -52,14 +56,17 @@ def query_ai(prompt, data_context=""):
 
             response = requests.post(OPENROUTER_URL, headers=headers, json=payload, timeout=20)
 
+            # DEBUG: log response for troubleshooting
+            print(f"[DEBUG] Model: {model}, Status: {response.status_code}, Response: {response.text[:200]}")
+
             if response.status_code == 200:
                 result = response.json()
                 return result["choices"][0]["message"]["content"].strip()
 
-            print(f"Model {model} returned status {response.status_code}. Trying next...")
+            print(f"[WARNING] Model {model} returned status {response.status_code}. Trying next...")
 
         except Exception as e:
-            print(f"Error with {model}: {e}")
+            print(f"[ERROR] Model {model} failed: {e}")
             continue
 
     return "AI Error: All model endpoints are currently unreachable. Please check your internet or API key."
