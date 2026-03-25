@@ -1,5 +1,5 @@
+# ai_engine.py
 import os
-from dotenv import load_dotenv
 import requests
 import streamlit as st
 from fpdf import FPDF
@@ -7,16 +7,9 @@ import numpy as np
 from sklearn.linear_model import LinearRegression
 
 # -----------------------------
-# LOAD ENVIRONMENT VARIABLES
+# API CONFIGURATION
 # -----------------------------
-load_dotenv()  # Load .env file
-API_KEY = os.getenv("OPENROUTER_API_KEY")
-
-if not API_KEY:
-    st.warning("⚠️ OpenRouter API key not found. AI features will be disabled.")
-else:
-    st.success("✅ OpenRouter API key loaded successfully")
-
+API_KEY = os.getenv("OPENROUTER_API_KEY")  # Picked from Streamlit Secrets
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 
 FALLBACK_MODELS = [
@@ -25,13 +18,16 @@ FALLBACK_MODELS = [
     "mistralai/mistral-7b-instruct:free"
 ]
 
+if not API_KEY:
+    st.warning("⚠️ No OpenRouter API key found. AI features will be disabled.")
+
 # -----------------------------
 # AI QUERY FUNCTION
 # -----------------------------
 def query_ai(prompt, data_context=""):
     """Query OpenRouter API with fallback models."""
     if not API_KEY:
-        return "Error: OpenRouter API Key missing. Please set OPENROUTER_API_KEY in your environment."
+        return "Error: OpenRouter API Key missing. Please set OPENROUTER_API_KEY in Streamlit Secrets."
 
     full_prompt = f"Context: {data_context}\n\nQuestion: {prompt}"
 
@@ -56,17 +52,18 @@ def query_ai(prompt, data_context=""):
 
             response = requests.post(OPENROUTER_URL, headers=headers, json=payload, timeout=20)
 
-            # DEBUG: log response for troubleshooting
-            print(f"[DEBUG] Model: {model}, Status: {response.status_code}, Response: {response.text[:200]}")
-
             if response.status_code == 200:
                 result = response.json()
-                return result["choices"][0]["message"]["content"].strip()
+                # Handle different response structures
+                try:
+                    return result["choices"][0]["message"]["content"].strip()
+                except KeyError:
+                    return "AI Error: Unexpected API response structure."
 
-            print(f"[WARNING] Model {model} returned status {response.status_code}. Trying next...")
+            print(f"Model {model} returned status {response.status_code}. Trying next...")
 
         except Exception as e:
-            print(f"[ERROR] Model {model} failed: {e}")
+            print(f"Error with {model}: {e}")
             continue
 
     return "AI Error: All model endpoints are currently unreachable. Please check your internet or API key."
