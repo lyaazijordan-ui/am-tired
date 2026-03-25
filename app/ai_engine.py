@@ -5,6 +5,7 @@ import streamlit as st
 from fpdf import FPDF
 import numpy as np
 from sklearn.linear_model import LinearRegression
+import pandas as pd
 
 # -----------------------------
 # API CONFIGURATION
@@ -19,15 +20,68 @@ FALLBACK_MODELS = [
 ]
 
 if not API_KEY:
-    st.warning("⚠️ No OpenRouter API key found. AI features will be disabled.")
+    st.warning("⚠️ No OpenRouter API key found. AI features will be limited.")
+
+# -----------------------------
+# LOCAL FALLBACK AI
+# -----------------------------
+def local_ai_answer(prompt, df=None):
+    """Simple local AI fallback for basic dataset analysis."""
+    prompt_lower = prompt.lower()
+    
+    if df is None:
+        return "Local AI: No dataset available for analysis."
+
+    numeric_cols = df.select_dtypes(include=np.number).columns.tolist()
+    
+    try:
+        if "summary" in prompt_lower:
+            summary_text = "Local AI: Dataset Summary:\n"
+            for col in numeric_cols:
+                summary_text += f"- {col}: mean={df[col].mean():.2f}, min={df[col].min()}, max={df[col].max()}, std={df[col].std():.2f}\n"
+            return summary_text
+
+        elif "correlation" in prompt_lower:
+            corr = df[numeric_cols].corr()
+            return f"Local AI: Correlation Matrix:\n{corr.round(2)}"
+
+        elif "trend" in prompt_lower:
+            trends = ""
+            for col in numeric_cols:
+                if len(df[col]) > 1:
+                    if df[col].iloc[-1] > df[col].iloc[0]:
+                        trends += f"- {col} appears to be increasing.\n"
+                    elif df[col].iloc[-1] < df[col].iloc[0]:
+                        trends += f"- {col} appears to be decreasing.\n"
+                    else:
+                        trends += f"- {col} is stable.\n"
+            return f"Local AI: Trends Observed:\n{trends}"
+
+        elif "anomaly" in prompt_lower:
+            anomalies_text = ""
+            for col in numeric_cols:
+                mean = df[col].mean()
+                std = df[col].std()
+                anomalies = df[(df[col] > mean + 2*std) | (df[col] < mean - 2*std)]
+                anomalies_text += f"- {col}: {len(anomalies)} anomalies detected\n"
+            return f"Local AI: Anomaly Detection Results:\n{anomalies_text}"
+
+        elif "medical" in prompt_lower:
+            return "Local AI: Basic medical data check is limited. Check column distributions and outliers."
+
+        else:
+            return "Local AI: I can summarize, find correlations, trends, anomalies, or do basic medical checks."
+    except Exception as e:
+        return f"Local AI Error: {e}"
 
 # -----------------------------
 # AI QUERY FUNCTION
 # -----------------------------
-def query_ai(prompt, data_context=""):
-    """Query OpenRouter API with fallback models."""
+def query_ai(prompt, data_context="", df=None):
+    """Query OpenRouter API with fallback to local AI."""
     if not API_KEY:
-        return "Error: OpenRouter API Key missing. Please set OPENROUTER_API_KEY in Streamlit Secrets."
+        # If no API key, always use local AI
+        return local_ai_answer(prompt, df)
 
     full_prompt = f"Context: {data_context}\n\nQuestion: {prompt}"
 
@@ -54,11 +108,10 @@ def query_ai(prompt, data_context=""):
 
             if response.status_code == 200:
                 result = response.json()
-                # Handle different response structures
                 try:
                     return result["choices"][0]["message"]["content"].strip()
                 except KeyError:
-                    return "AI Error: Unexpected API response structure."
+                    continue  # If API response is weird, try next model
 
             print(f"Model {model} returned status {response.status_code}. Trying next...")
 
@@ -66,33 +119,31 @@ def query_ai(prompt, data_context=""):
             print(f"Error with {model}: {e}")
             continue
 
-    return "AI Error: All model endpoints are currently unreachable. Please check your internet or API key."
+    # If all models fail, fallback to local AI
+    return local_ai_answer(prompt, df)
 
 # -----------------------------
 # INSIGHTS AND ANALYSIS
 # -----------------------------
 def generate_insight(df, column):
-    """Generates an automated summary insight for a column."""
     summary = (
         f"Column '{column}' - Mean: {df[column].mean():.2f}, "
         f"Max: {df[column].max()}, Min: {df[column].min()}."
     )
-    return query_ai(f"Give a short expert insight on these stats: {summary}")
+    return query_ai(f"Give a short expert insight on these stats: {summary}", df=df)
 
 def medical_analysis(df):
-    """Specialized medical data check."""
     cols = list(df.columns)
     prompt = (
         f"Identify potential health-related risks or trends in these data headers: {cols}. "
         "Disclaimer: This is not medical advice."
     )
-    return query_ai(prompt)
+    return query_ai(prompt, df=df)
 
 # -----------------------------
 # PREDICTION FUNCTIONS
 # -----------------------------
 def predict_future(df, column, steps=5):
-    """Predicts future values of a numeric column using linear regression."""
     y = df[column].values
     X = np.arange(len(y)).reshape(-1, 1)
 
@@ -105,7 +156,6 @@ def predict_future(df, column, steps=5):
     return predictions
 
 def detect_anomalies(df, column):
-    """Detects anomalies that lie beyond 2 standard deviations from the mean."""
     data = df[column]
     mean = data.mean()
     std = data.std()
@@ -117,7 +167,6 @@ def detect_anomalies(df, column):
 # PDF REPORT GENERATOR
 # -----------------------------
 def generate_pdf(filename, insights, preds, anomalies):
-    """Creates a branded PDF report for Intellectual Data Lab."""
     pdf = FPDF()
     pdf.add_page()
 
