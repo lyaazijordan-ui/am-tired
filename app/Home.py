@@ -6,6 +6,11 @@ if "user" not in st.session_state:
     st.session_state["user"] = None
 
 st.set_page_config(
+    page_title="AI Data Visualizer",
+    layout="wide"
+)
+
+st.set_page_config(
     page_title="Intellectual Data Lab",
     page_icon="🧠",
     layout="wide",
