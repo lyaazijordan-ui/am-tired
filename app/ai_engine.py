@@ -1,9 +1,13 @@
-import requests
 import os
+import requests
 import streamlit as st
 from fpdf import FPDF
+import numpy as np
+from sklearn.linear_model import LinearRegression
 
-# Use the same OpenRouter API key you had before
+# -----------------------------
+# API CONFIGURATION
+# -----------------------------
 API_KEY = os.getenv("OPENROUTER_API_KEY")
 
 if not API_KEY:
@@ -17,8 +21,11 @@ FALLBACK_MODELS = [
     "mistralai/mistral-7b-instruct:free"
 ]
 
+# -----------------------------
+# AI QUERY FUNCTION
+# -----------------------------
 def query_ai(prompt, data_context=""):
-    """Query OpenRouter API with intelligent fallback."""
+    """Query OpenRouter API with fallback models."""
     if not API_KEY:
         return "Error: OpenRouter API Key missing. Please set OPENROUTER_API_KEY in your environment."
 
@@ -57,12 +64,16 @@ def query_ai(prompt, data_context=""):
 
     return "AI Error: All model endpoints are currently unreachable. Please check your internet or API key."
 
-
+# -----------------------------
+# INSIGHTS AND ANALYSIS
+# -----------------------------
 def generate_insight(df, column):
     """Generates an automated summary insight for a column."""
-    summary = f"Column '{column}' - Mean: {df[column].mean():.2f}, Max: {df[column].max()}, Min: {df[column].min()}."
+    summary = (
+        f"Column '{column}' - Mean: {df[column].mean():.2f}, "
+        f"Max: {df[column].max()}, Min: {df[column].min()}."
+    )
     return query_ai(f"Give a short expert insight on these stats: {summary}")
-
 
 def medical_analysis(df):
     """Specialized medical data check."""
@@ -73,7 +84,34 @@ def medical_analysis(df):
     )
     return query_ai(prompt)
 
+# -----------------------------
+# PREDICTION FUNCTIONS
+# -----------------------------
+def predict_future(df, column, steps=5):
+    """Predicts future values of a numeric column using linear regression."""
+    y = df[column].values
+    X = np.arange(len(y)).reshape(-1, 1)
 
+    model = LinearRegression()
+    model.fit(X, y)
+
+    future_X = np.arange(len(y), len(y) + steps).reshape(-1, 1)
+    predictions = model.predict(future_X)
+
+    return predictions
+
+def detect_anomalies(df, column):
+    """Detects anomalies that lie beyond 2 standard deviations from the mean."""
+    data = df[column]
+    mean = data.mean()
+    std = data.std()
+
+    anomalies = df[(data > mean + 2*std) | (data < mean - 2*std)]
+    return anomalies
+
+# -----------------------------
+# PDF REPORT GENERATOR
+# -----------------------------
 def generate_pdf(filename, insights, preds, anomalies):
     """Creates a branded PDF report for Intellectual Data Lab."""
     pdf = FPDF()
@@ -92,7 +130,7 @@ def generate_pdf(filename, insights, preds, anomalies):
     pdf.set_font("Arial", size=11)
     pdf.multi_cell(0, 8, str(insights))
 
-    # Section 2: Findings
+    # Section 2: Predictions & Anomalies
     pdf.ln(5)
     pdf.set_font("Arial", 'B', 14)
     pdf.cell(0, 10, "2. Statistical Findings", ln=True)
