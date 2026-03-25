@@ -1,13 +1,14 @@
 import requests
 import os
 from fpdf import FPDF
-import os
 import streamlit as st
 
-api_key = os.getenv("OPENAI_API_KEY")
+# Fetch API key from environment
+API_KEY = os.getenv("OPENAI_API_KEY")
 
-if not api_key:
+if not API_KEY:
     st.warning("⚠️ No API key found. AI features disabled.")
+
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 
 FALLBACK_MODELS = [
@@ -19,7 +20,7 @@ FALLBACK_MODELS = [
 def query_ai(prompt, data_context=""):
     """Query OpenRouter API with intelligent fallback."""
     if not API_KEY:
-        return "Error: API Key missing. Please set OPENROUTER_API_KEY in your environment."
+        return "Error: API Key missing. Please set OPENAI_API_KEY in your environment."
 
     full_prompt = f"Context: {data_context}\n\nQuestion: {prompt}"
 
@@ -46,6 +47,7 @@ def query_ai(prompt, data_context=""):
 
             if response.status_code == 200:
                 result = response.json()
+                # Sometimes OpenRouter returns "choices" differently
                 return result["choices"][0]["message"]["content"].strip()
 
             print(f"Model {model} returned status {response.status_code}. Trying next...")
@@ -58,7 +60,10 @@ def query_ai(prompt, data_context=""):
 
 def generate_insight(df, column):
     """Generates an automated summary insight."""
-    summary = f"Column '{column}' - Mean: {df[column].mean():.2f}, Max: {df[column].max()}."
+    try:
+        summary = f"Column '{column}' - Mean: {df[column].mean():.2f}, Max: {df[column].max()}."
+    except Exception as e:
+        summary = f"Could not compute summary for column '{column}': {e}"
     return query_ai(f"Give a short expert insight on these stats: {summary}")
 
 def medical_analysis(df):
