@@ -1,5 +1,9 @@
 import streamlit as st
 from pathlib import Path
+import streamlit as st
+
+if "user" not in st.session_state:
+    st.session_state["user"] = None
 
 st.set_page_config(
     page_title="Intellectual Data Lab",
