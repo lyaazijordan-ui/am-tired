@@ -1,6 +1,4 @@
 import streamlit as st
-from pathlib import Path
-import os
 import pandas as pd
 
 # Initialize session state
@@ -108,12 +106,13 @@ st.markdown("### Get Started")
 uploaded_file = st.file_uploader("Upload your dataset (CSV or Excel)", type=["csv", "xlsx"])
 
 if uploaded_file:
-    # Read uploaded file safely
+    # Correct indentation for file reading
     if uploaded_file.name.endswith('.csv'):
         df = pd.read_csv(uploaded_file)
     else:
         df = pd.read_excel(uploaded_file)
 
+    # Save to session state
     st.session_state['uploaded_data'] = df
     st.session_state['file_name'] = uploaded_file.name
 
