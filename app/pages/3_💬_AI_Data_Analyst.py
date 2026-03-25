@@ -1,17 +1,14 @@
-# pages/3_💬_AI_Data_Analyst.py
+# ai_data_analyst.py
 import streamlit as st
 import pandas as pd
 import sys
 import os
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-from ai_engine import query_ai, medical_analysis, generate_insight, detect_anomalies, predict_future
+from ai_engine import query_ai, medical_analysis
 
 st.set_page_config(page_title="AI Data Analyst", page_icon="💬", layout="wide")
 
-# -----------------------------
-# CSS Styling
-# -----------------------------
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
@@ -29,15 +26,10 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# -----------------------------
-# Page Header
-# -----------------------------
 st.title("💬 AI Data Analyst")
 st.caption("Ask questions in natural language and get intelligent insights")
 
-# -----------------------------
-# Dataset Check
-# -----------------------------
+# Ensure dataset is loaded
 if 'uploaded_data' not in st.session_state:
     st.warning("Please upload a dataset on the Home page first")
     st.stop()
@@ -48,10 +40,9 @@ file_name = st.session_state.get('file_name', 'your dataset')
 if 'chat_history' not in st.session_state:
     st.session_state['chat_history'] = []
 
-# -----------------------------
-# Dataset Info
-# -----------------------------
 st.markdown("---")
+
+# Dataset info card
 st.markdown(f"""
 <div class="info-card">
     <strong>Dataset Loaded:</strong> {file_name} <br>
@@ -59,9 +50,7 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
-# -----------------------------
-# Quick Actions
-# -----------------------------
+# Quick action buttons
 st.markdown("### Quick Actions")
 col1, col2, col3, col4 = st.columns(4)
 
@@ -81,34 +70,44 @@ with col4:
     if st.button("Medical Analysis", use_container_width=True):
         with st.spinner("Running medical analysis..."):
             result = medical_analysis(df)
-            st.session_state['chat_history'].append({'role': 'user', 'content': 'Perform a medical analysis on this dataset'})
-            st.session_state['chat_history'].append({'role': 'assistant', 'content': result})
+            st.session_state['chat_history'].append({
+                'role': 'user',
+                'content': 'Perform a medical analysis on this dataset'
+            })
+            st.session_state['chat_history'].append({
+                'role': 'assistant',
+                'content': result
+            })
 
 st.markdown("---")
 
-# -----------------------------
-# Chat History
-# -----------------------------
+# Chat container
 st.markdown('<div class="chat-container">', unsafe_allow_html=True)
+
 for message in st.session_state['chat_history']:
     with st.chat_message(message['role']):
         st.write(message['content'])
+
 st.markdown('</div>', unsafe_allow_html=True)
 
-# -----------------------------
-# User Question Input
-# -----------------------------
+# User input
 user_question = st.chat_input("Ask a question about your data...")
 
+# Handle quick actions
 if 'quick_question' in st.session_state:
     user_question = st.session_state['quick_question']
     del st.session_state['quick_question']
 
 if user_question:
-    st.session_state['chat_history'].append({'role': 'user', 'content': user_question})
+    st.session_state['chat_history'].append({
+        'role': 'user',
+        'content': user_question
+    })
+
     with st.chat_message("user"):
         st.write(user_question)
 
+    # Build dataset context
     numeric_cols = df.select_dtypes(include=['number']).columns.tolist()
     context = f"""
     Dataset: {file_name}
@@ -121,15 +120,18 @@ if user_question:
 
     with st.chat_message("assistant"):
         with st.spinner("Analyzing..."):
-            response = query_ai(user_question, context)
+            # Pass df to query_ai for local fallback
+            response = query_ai(user_question, context, df=df)
             st.write(response)
 
-    st.session_state['chat_history'].append({'role': 'assistant', 'content': response})
+    st.session_state['chat_history'].append({
+        'role': 'assistant',
+        'content': response
+    })
+
     st.rerun()
 
-# -----------------------------
-# Clear Chat History
-# -----------------------------
+# Clear chat
 if len(st.session_state['chat_history']) > 0:
     if st.button("Clear Chat History"):
         st.session_state['chat_history'] = []
