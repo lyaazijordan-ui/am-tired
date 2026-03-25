@@ -251,7 +251,12 @@ if uploaded_file:
     import pandas as pd
 
     if uploaded_file.name.endswith('.csv'):
-        df = pd.read_csv(uploaded_file)
+        import os
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+file_path = os.path.join(BASE_DIR, "data", "file.csv")
+
+df = pd.read_csv(file_path)
     else:
         df = pd.read_excel(uploaded_file)
 
