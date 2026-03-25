@@ -1,9 +1,13 @@
 import requests
 import os
 from fpdf import FPDF
+import os
+import streamlit as st
 
-# 1. SETUP & CONFIGURATION
-API_KEY = os.getenv("OPENROUTER_API_KEY")
+api_key = os.getenv("OPENAI_API_KEY")
+
+if not api_key:
+    st.warning("⚠️ No API key found. AI features disabled.")
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 
 FALLBACK_MODELS = [
