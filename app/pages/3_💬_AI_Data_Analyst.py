@@ -37,7 +37,10 @@ if prompt:
 
 # AUTO GRAPH MAGIC
 st.subheader("📊 Auto Visualization")
-fig = auto_graph(df)
+charts = auto_graph(df)
 
-if fig:
-    st.plotly_chart(fig, use_container_width=True)
+if charts:
+    st.subheader("📊 Smart Data Dashboard")
+
+    for chart in charts:
+        st.plotly_chart(chart, width='stretch')
