@@ -92,22 +92,75 @@ def query_ai(prompt, data_context="", df=None):
 # -----------------------------
 def auto_graph(df):
     import plotly.express as px
+    import plotly.figure_factory as ff
 
-    numeric = df.select_dtypes(include=['number']).columns
-    categorical = df.select_dtypes(exclude=['number']).columns
+    charts = []
 
+    numeric = df.select_dtypes(include=['number']).columns.tolist()
+    categorical = df.select_dtypes(exclude=['number']).columns.tolist()
+
+    # -----------------------------
+    # 1. TIME SERIES (Line Chart)
+    # -----------------------------
+    for col in df.columns:
+        if "date" in col.lower() or "time" in col.lower():
+            if len(numeric) >= 1:
+                fig = px.line(df, x=col, y=numeric[0],
+                              title=f"📈 Trend of {numeric[0]} over {col}")
+                charts.append(fig)
+                break
+
+    # -----------------------------
+    # 2. SCATTER (Relationships)
+    # -----------------------------
     if len(numeric) >= 2:
-        return px.scatter(df, x=numeric[0], y=numeric[1], title="Auto Scatter Plot")
+        fig = px.scatter(df, x=numeric[0], y=numeric[1],
+                         title=f"🔗 Relationship: {numeric[0]} vs {numeric[1]}")
+        charts.append(fig)
 
-    if len(numeric) == 1:
-        return px.histogram(df, x=numeric[0], title="Distribution")
+    # -----------------------------
+    # 3. HISTOGRAM (Distribution)
+    # -----------------------------
+    if len(numeric) >= 1:
+        fig = px.histogram(df, x=numeric[0],
+                           title=f"📊 Distribution of {numeric[0]}")
+        charts.append(fig)
 
+    # -----------------------------
+    # 4. BOXPLOT (Outliers)
+    # -----------------------------
+    if len(numeric) >= 1:
+        fig = px.box(df, y=numeric[0],
+                     title=f"📦 Outliers in {numeric[0]}")
+        charts.append(fig)
+
+    # -----------------------------
+    # 5. BAR (Categorical)
+    # -----------------------------
     if len(categorical) >= 1:
-        return px.bar(df[categorical[0]].value_counts().reset_index(),
-                      x='index', y=categorical[0],
-                      title="Category Distribution")
+        counts = df[categorical[0]].value_counts().reset_index()
+        counts.columns = ["Category", "Count"]
 
-    return None
+        fig = px.bar(counts, x="Category", y="Count",
+                     title=f"📊 Distribution of {categorical[0]}")
+        charts.append(fig)
+
+    # -----------------------------
+    # 6. HEATMAP (Correlation)
+    # -----------------------------
+    if len(numeric) >= 2:
+        corr = df[numeric].corr()
+        fig = ff.create_annotated_heatmap(
+            z=corr.values,
+            x=list(corr.columns),
+            y=list(corr.index),
+            annotation_text=round(corr.values, 2),
+            showscale=True
+        )
+        fig.update_layout(title="🔥 Correlation Heatmap")
+        charts.append(fig)
+
+    return charts
 
 # -----------------------------
 # PREDICTIONS
