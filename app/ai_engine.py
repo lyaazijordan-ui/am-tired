@@ -161,7 +161,25 @@ def auto_graph(df):
         charts.append(fig)
 
     return charts
+    
+def explain_data(df):
+    numeric = df.select_dtypes(include=['number']).columns.tolist()
 
+    summary = df.describe().to_string()
+
+    prompt = f"""
+    You are a data analyst.
+
+    Explain the dataset in simple terms:
+    - Key trends
+    - Any unusual patterns
+    - Important insights
+
+    Data Summary:
+    {summary}
+    """
+
+    return query_ai(prompt, df=df)
 # -----------------------------
 # PREDICTIONS
 # -----------------------------
