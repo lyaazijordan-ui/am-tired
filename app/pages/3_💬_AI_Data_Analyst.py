@@ -44,3 +44,10 @@ if charts:
 
     for chart in charts:
         st.plotly_chart(chart, width='stretch')
+
+    # AI Explanation
+    st.subheader("🧠 AI Insights")
+
+    with st.spinner("AI analyzing your data..."):
+        insight = explain_data(df)
+        st.success(insight)
