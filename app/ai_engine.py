@@ -97,6 +97,31 @@ def query_ai(prompt, data_context="", df=None):
     return local_ai(prompt, df)
 
 # -----------------------------
+# MEDICAL ANALYSIS (SAFE)
+# -----------------------------
+def medical_analysis(df):
+    try:
+        cols = list(df.columns)
+
+        prompt = f"""
+        Analyze this dataset for possible health-related insights.
+
+        Columns: {cols}
+
+        Look for:
+        - Risk patterns
+        - Trends
+        - Any unusual indicators
+
+        Disclaimer: Not medical advice.
+        """
+
+        return query_ai(prompt, df=df)
+
+    except Exception as e:
+        return f"Medical analysis error: {str(e)}"
+
+# -----------------------------
 # AUTO GRAPH (FIXED)
 # -----------------------------
 def auto_graph(df):
