@@ -3,6 +3,7 @@ import sys, os
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from ai_engine import query_ai, auto_graph
+from ai_engine import query_ai, medical_analysis, explain_data
 
 st.set_page_config(page_title="AI Analyst", page_icon="🤖", layout="wide")
 
