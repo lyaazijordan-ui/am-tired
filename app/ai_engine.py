@@ -94,11 +94,10 @@ def query_ai(prompt, data_context="", df=None):
             print(f"API error with {model}: {e}")
             continue
 
-    # fallback
     return local_ai(prompt, df)
 
 # -----------------------------
-# SMART GRAPH GENERATOR (ELITE)
+# AUTO GRAPH (FIXED)
 # -----------------------------
 def auto_graph(df):
     import plotly.express as px
@@ -110,10 +109,10 @@ def auto_graph(df):
         numeric = df.select_dtypes(include=['number']).columns.tolist()
         categorical = df.select_dtypes(exclude=['number']).columns.tolist()
 
-        # TIME SERIES
+        # LINE (time series)
         for col in df.columns:
             if "date" in col.lower() or "time" in col.lower():
-                if len(numeric) >= 1:
+                if numeric:
                     fig = px.line(df, x=col, y=numeric[0],
                                   title=f"📈 Trend of {numeric[0]} over {col}")
                     charts.append(fig)
@@ -121,50 +120,41 @@ def auto_graph(df):
 
         # SCATTER
         if len(numeric) >= 2:
-            fig = px.scatter(df, x=numeric[0], y=numeric[1],
-                             title=f"🔗 {numeric[0]} vs {numeric[1]}")
-            charts.append(fig)
+            charts.append(px.scatter(df, x=numeric[0], y=numeric[1],
+                                     title=f"🔗 {numeric[0]} vs {numeric[1]}"))
 
         # HISTOGRAM
-        if len(numeric) >= 1:
-            fig = px.histogram(df, x=numeric[0],
-                               title=f"📊 Distribution of {numeric[0]}")
-            charts.append(fig)
+        if numeric:
+            charts.append(px.histogram(df, x=numeric[0],
+                                       title=f"📊 Distribution of {numeric[0]}"))
 
         # BOXPLOT
-        if len(numeric) >= 1:
-            fig = px.box(df, y=numeric[0],
-                         title=f"📦 Outliers in {numeric[0]}")
-            charts.append(fig)
+        if numeric:
+            charts.append(px.box(df, y=numeric[0],
+                                 title=f"📦 Outliers in {numeric[0]}"))
 
-        # BAR CHART
-        if len(categorical) >= 1:
+        # BAR
+        if categorical:
             counts = df[categorical[0]].value_counts().reset_index()
             counts.columns = ["Category", "Count"]
+            charts.append(px.bar(counts, x="Category", y="Count",
+                                 title=f"📊 {categorical[0]} Distribution"))
 
-            fig = px.bar(counts, x="Category", y="Count",
-                         title=f"📊 {categorical[0]} Distribution")
-            charts.append(fig)
-
-        # HEATMAP (FIXED)
+        # HEATMAP (🔥 FIXED PROPERLY)
         if len(numeric) >= 2:
-            try:
-                corr = df[numeric].corr()
-                rounded = np.round(corr.values, 2)
+            corr = df[numeric].corr()
+            rounded = np.round(corr.values, 2)
 
-                fig = ff.create_annotated_heatmap(
-                    z=rounded,
-                    x=list(corr.columns),
-                    y=list(corr.index),
-                    annotation_text=rounded.astype(str),
-                    showscale=True
-                )
+            fig = ff.create_annotated_heatmap(
+                z=rounded,
+                x=list(corr.columns),
+                y=list(corr.index),
+                annotation_text=rounded.astype(str),
+                showscale=True
+            )
 
-                fig.update_layout(title="🔥 Correlation Heatmap")
-                charts.append(fig)
-
-            except Exception as e:
-                print("Heatmap error:", e)
+            fig.update_layout(title="🔥 Correlation Heatmap")
+            charts.append(fig)
 
     except Exception as e:
         print("Auto graph error:", e)
@@ -172,21 +162,19 @@ def auto_graph(df):
     return charts
 
 # -----------------------------
-# AI EXPLANATION
+# AI EXPLANATION (FIXED)
 # -----------------------------
 def explain_data(df):
     try:
         summary = df.describe().to_string()
 
         prompt = f"""
-        You are a data analyst.
-
-        Explain:
+        Explain this dataset in simple terms:
         - Key trends
         - Patterns
-        - Important insights
+        - Insights
 
-        Data Summary:
+        Data:
         {summary}
         """
 
@@ -194,6 +182,27 @@ def explain_data(df):
 
     except Exception as e:
         return f"Insight Error: {str(e)}"
+
+# -----------------------------
+# SIMPLE INSIGHT FUNCTION (FIXED)
+# -----------------------------
+def generate_insight(df, column):
+    try:
+        if column not in df.columns:
+            return f"Column '{column}' not found."
+
+        if not np.issubdtype(df[column].dtype, np.number):
+            return f"Column '{column}' is not numeric."
+
+        return f"""
+        📊 Insights for '{column}':
+        Mean: {df[column].mean():.2f}
+        Max: {df[column].max()}
+        Min: {df[column].min()}
+        """
+
+    except Exception as e:
+        return f"Insight error: {str(e)}"
 
 # -----------------------------
 # PREDICTIONS
