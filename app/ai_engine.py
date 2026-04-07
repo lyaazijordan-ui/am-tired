@@ -1,4 +1,4 @@
-# ai_engine.py (FINAL GOD MODE)
+# ai_engine.py (FINAL GOD MODE - FIXED)
 
 import os
 import requests
@@ -9,11 +9,14 @@ from sklearn.linear_model import LinearRegression
 from fpdf import FPDF
 
 # -----------------------------
-# API CONFIG
+# 🌐 API CONFIG
 # -----------------------------
-API_KEY = st.secrets["OPENROUTER_API_KEY"]
+API_KEY = st.secrets.get("OPENROUTER_API_KEY")
+if not API_KEY:
+    st.error("OPENROUTER_API_KEY missing! Add it to secrets.toml or Streamlit Cloud secrets.")
+    st.stop()
 
-st.write("connected:",bool(API_KEY))
+st.write("Connected to OpenRouter:", bool(API_KEY))
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 
 FALLBACK_MODELS = [
@@ -23,11 +26,10 @@ FALLBACK_MODELS = [
 ]
 
 # -----------------------------
-# 🧠 LOCAL AI (GOD MODE)
+# 🧠 LOCAL AI (Fallback)
 # -----------------------------
 def local_ai(prompt, df=None):
     prompt = prompt.lower()
-
     if df is None:
         return "Upload a dataset first."
 
@@ -35,65 +37,51 @@ def local_ai(prompt, df=None):
     categorical = df.select_dtypes(exclude=['number']).columns.tolist()
 
     try:
-        # INTENT DETECTION
         if any(x in prompt for x in ["summary", "overview", "describe"]):
             return f"📊 Summary:\n{df.describe().to_string()}"
-
         if any(x in prompt for x in ["mean", "average"]):
             return "📊 Averages:\n" + df[numeric].mean().to_string()
-
         if "max" in prompt:
             return "📈 Max values:\n" + df[numeric].max().to_string()
-
         if "min" in prompt:
             return "📉 Min values:\n" + df[numeric].min().to_string()
-
         if any(x in prompt for x in ["correlation", "relationship"]):
             corr = df[numeric].corr()
             return f"🔗 Correlation:\n{corr.to_string()}"
-
         if "trend" in prompt:
             result = []
             for col in numeric:
-                if df[col].iloc[-1] > df[col].iloc[0]:
-                    result.append(f"{col}: Increasing 📈")
-                else:
-                    result.append(f"{col}: Decreasing 📉")
+                trend = "Increasing 📈" if df[col].iloc[-1] > df[col].iloc[0] else "Decreasing 📉"
+                result.append(f"{col}: {trend}")
             return "\n".join(result)
-
         if any(x in prompt for x in ["outlier", "anomaly"]):
             report = []
             for col in numeric:
-                mean = df[col].mean()
-                std = df[col].std()
+                mean, std = df[col].mean(), df[col].std()
                 outliers = df[(df[col] > mean + 2*std) | (df[col] < mean - 2*std)]
                 report.append(f"{col}: {len(outliers)} anomalies")
             return "\n".join(report)
-
         if "important" in prompt:
             variances = df[numeric].var()
             return f"⭐ Most important column: {variances.idxmax()}"
-
         return (
-            "🤖 I didn’t fully get that.\n\nTry:\n"
-            "- summary\n- trends\n- correlation\n- anomalies"
+            "🤖 I didn’t fully get that.\nTry:\n- summary\n- trends\n- correlation\n- anomalies"
         )
-
     except Exception as e:
         return f"Local AI Error: {str(e)}"
 
 
 # -----------------------------
-# 🌐 HYBRID AI (API + LOCAL)
+# 🌐 QUERY AI (Hybrid API + Local)
 # -----------------------------
-def query_ai(prompt, context="", df=None):
-    if not API_KEY:
+def query_ai(prompt, context="", df=None, api_key=API_KEY):
+    if not api_key:
         return local_ai(prompt, df)
 
     full_prompt = f"{context}\n\nUser Question: {prompt}"
 
     headers = {
-        "Authorization": f"Bearer {API_KEY}",
+        "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json"
     }
 
@@ -111,10 +99,8 @@ def query_ai(prompt, context="", df=None):
                 },
                 timeout=15
             )
-
             if res.status_code == 200:
                 return res.json()["choices"][0]["message"]["content"]
-
         except:
             continue
 
@@ -133,7 +119,7 @@ def auto_graph(df):
     categorical = df.select_dtypes(exclude=['number']).columns.tolist()
 
     try:
-        # Line (time)
+        # Line chart for time
         for col in df.columns:
             if "date" in col.lower():
                 charts.append(px.line(df, x=col, y=numeric[0]))
@@ -156,11 +142,10 @@ def auto_graph(df):
             counts.columns = ["Category", "Count"]
             charts.append(px.bar(counts, x="Category", y="Count"))
 
-        # Heatmap FIXED
+        # Heatmap
         if len(numeric) >= 2:
             corr = df[numeric].corr()
             rounded = np.round(corr.values, 2)
-
             fig = ff.create_annotated_heatmap(
                 z=rounded,
                 x=list(corr.columns),
@@ -175,52 +160,44 @@ def auto_graph(df):
 
     return charts
 
-def suggest_graph(df):
+
+# -----------------------------
+# 🧠 SUGGEST GRAPH (Fixed with API)
+# -----------------------------
+def suggest_graph(df, api_key=API_KEY):
     numeric = df.select_dtypes(include=['number']).columns.tolist()
     categorical = df.select_dtypes(exclude=['number']).columns.tolist()
-
     suggestions = []
 
     try:
-        # TIME SERIES
+        # Time series
         for col in df.columns:
             if "date" in col.lower() or "time" in col.lower():
                 if numeric:
-                    suggestions.append(
-                        f"📈 Line Chart → Best for trends over time using '{col}'"
-                    )
+                    suggestions.append(f"📈 Line Chart → Best for trends over time using '{col}'")
 
-        # RELATIONSHIPS
+        # Relationships
         if len(numeric) >= 2:
-            suggestions.append(
-                f"🔗 Scatter Plot → Shows relationship between '{numeric[0]}' and '{numeric[1]}'"
-            )
+            suggestions.append(f"🔗 Scatter Plot → Relationship between '{numeric[0]}' and '{numeric[1]}'")
 
-        # DISTRIBUTION
+        # Distribution
         if numeric:
-            suggestions.append(
-                f"📊 Histogram → Understand distribution of '{numeric[0]}'"
-            )
+            suggestions.append(f"📊 Histogram → Understand distribution of '{numeric[0]}'")
 
-        # OUTLIERS
+        # Outliers
         if numeric:
-            suggestions.append(
-                f"📦 Box Plot → Detect outliers in '{numeric[0]}'"
-            )
+            suggestions.append(f"📦 Box Plot → Detect outliers in '{numeric[0]}'")
 
-        # CATEGORY
+        # Categories
         if categorical:
-            suggestions.append(
-                f"📊 Bar Chart → Compare categories in '{categorical[0]}'"
-            )
+            suggestions.append(f"📊 Bar Chart → Compare categories in '{categorical[0]}'")
 
-        # CORRELATION
+        # Correlation
         if len(numeric) >= 2:
-            suggestions.append(
-                "🔥 Heatmap → Visualize correlations between numeric features"
-            )
+            suggestions.append("🔥 Heatmap → Visualize correlations between numeric features")
 
         if suggestions:
+            # Optional: can call AI for smarter suggestions
             return "🧠 AI Graph Suggestions:\n\n" + "\n".join(suggestions)
 
         return "No strong visualization suggestion found."
@@ -232,9 +209,9 @@ def suggest_graph(df):
 # -----------------------------
 # 🧠 AUTO EXPLANATION
 # -----------------------------
-def explain_data(df):
+def explain_data(df, api_key=API_KEY):
     summary = df.describe().to_string()
-    return query_ai("Explain key insights from this data:\n" + summary, df=df)
+    return query_ai("Explain key insights from this data:\n" + summary, df=df, api_key=api_key)
 
 
 # -----------------------------
@@ -252,22 +229,18 @@ def predict_future(df, column, steps=5):
 
 
 def detect_anomalies(df, column):
-    mean = df[column].mean()
-    std = df[column].std()
+    mean, std = df[column].mean(), df[column].std()
     return df[(df[column] > mean + 2*std) | (df[column] < mean - 2*std)]
 
 
 # -----------------------------
-# 📄 PDF
+# 📄 PDF GENERATOR
 # -----------------------------
 def generate_pdf(filename, text):
     pdf = FPDF()
     pdf.add_page()
-
     pdf.set_font("Arial", 'B', 16)
     pdf.cell(0, 10, "AI Report", ln=True)
-
     pdf.set_font("Arial", size=10)
     pdf.multi_cell(0, 8, str(text))
-
     pdf.output(filename)
