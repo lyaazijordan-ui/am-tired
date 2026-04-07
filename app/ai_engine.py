@@ -13,7 +13,7 @@ from fpdf import FPDF
 # -----------------------------
 API_KEY = st.secrets["OPENROUTER_API_KEY"]
 
-st.write("connected:"bool(API_KEY))
+st.write("connected:",bool(API_KEY))
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 
 FALLBACK_MODELS = [
