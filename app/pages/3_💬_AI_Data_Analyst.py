@@ -56,7 +56,12 @@ if prompt:
     # AI Response
     with st.chat_message("assistant"):
         with st.spinner("AI analyzing your data..."):
-            response = query_ai(prompt, context, df)
+            response = query_ai(
+    prompt=prompt,
+    context=full_context,
+    df=df,
+    api_key=API_KEY   # <-- pass the Streamlit secret here
+            )
             st.write(response)
 
     # Save response
@@ -71,7 +76,7 @@ st.subheader("📊 Auto Visualization")
 # AI GRAPH SUGGESTION
 # -----------------------------
 with st.spinner("AI choosing best visualizations..."):
-    suggestion = suggest_graph(df)
+    suggestion = suggest_graph(df, api_key=API_KEY)
     st.info(suggestion)
 
 # -----------------------------
