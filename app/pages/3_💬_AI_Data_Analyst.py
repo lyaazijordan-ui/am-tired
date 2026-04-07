@@ -5,7 +5,7 @@ import sys, os
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
 # Correct imports (cleaned)
-from ai_engine import query_ai, auto_graph, explain_data
+from ai_engine import query_ai, auto_graph, explain_data, suggest_graph
 
 # Page config
 st.set_page_config(page_title="AI Analyst", page_icon="🤖", layout="wide")
@@ -67,6 +67,16 @@ if prompt:
 # -----------------------------
 st.subheader("📊 Auto Visualization")
 
+# -----------------------------
+# AI GRAPH SUGGESTION
+# -----------------------------
+with st.spinner("AI choosing best visualizations..."):
+    suggestion = suggest_graph(df)
+    st.info(suggestion)
+
+# -----------------------------
+# GENERATE GRAPHS
+# -----------------------------
 charts = auto_graph(df)
 
 if charts:
@@ -74,6 +84,15 @@ if charts:
 
     for chart in charts:
         st.plotly_chart(chart, use_container_width=True)
+
+    # -----------------------------
+    # AI EXPLANATION
+    # -----------------------------
+    st.subheader("🧠 AI Insights")
+
+    with st.spinner("Analyzing dataset insights..."):
+        insight = explain_data(df)
+        st.success(insight)
 
     # -----------------------------
     # AI EXPLANATION
