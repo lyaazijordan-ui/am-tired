@@ -111,7 +111,7 @@ with col2:
 with col3:
     if st.button("Generate AI Insight", use_container_width=True):
         with st.spinner("Generating insights..."):
-            insight = generate_insight(df, selected_column)
+            insight = explain_data(df, selected_column)
             st.session_state['insight'] = insight
             st.session_state['insight_column'] = selected_column
 
