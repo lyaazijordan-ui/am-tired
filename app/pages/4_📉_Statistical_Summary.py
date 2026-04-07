@@ -7,7 +7,7 @@ import os
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from data_engine import predict_future, detect_anomalies
-from ai_engine import explain_data, generate_pdf
+from ai_engine import query_ai, explain_data, generate_pdf
 
 st.set_page_config(page_title="Statistical Summary", page_icon="📉", layout="wide")
 
