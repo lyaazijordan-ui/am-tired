@@ -60,7 +60,7 @@ if prompt:
     prompt=prompt,
     context=full_context,
     df=df,
-    api_key=OPENROUTER_API_KEY   # <-- pass the Streamlit secret here
+    api_key=API_KEY   # <-- pass the Streamlit secret here
             )
             st.write(response)
 
@@ -76,7 +76,7 @@ st.subheader("📊 Auto Visualization")
 # AI GRAPH SUGGESTION
 # -----------------------------
 with st.spinner("AI choosing best visualizations..."):
-    suggestion = suggest_graph(df, api_key=OPENROUTER_API_KEY)
+    suggestion = suggest_graph(df, api_key=API_KEY)
     st.info(suggestion)
 
 # -----------------------------
