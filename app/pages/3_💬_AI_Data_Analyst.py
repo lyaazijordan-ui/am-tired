@@ -4,8 +4,15 @@ import sys, os
 # Path fix
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
-# Correct imports (cleaned)
 from ai_engine import query_ai, auto_graph, explain_data, suggest_graph
+
+# -----------------------------
+# Load API Key from Streamlit secrets
+# -----------------------------
+API_KEY = st.secrets.get("OPENROUTER_API_KEY")
+if not API_KEY:
+    st.error("OPENROUTER_API_KEY missing! Add it to secrets.toml or Streamlit Cloud secrets.")
+    st.stop()
 
 # Page config
 st.set_page_config(page_title="AI Analyst", page_icon="🤖", layout="wide")
