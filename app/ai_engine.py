@@ -4,13 +4,16 @@ import os
 import requests
 import pandas as pd
 import numpy as np
+import streamlit as st
 from sklearn.linear_model import LinearRegression
 from fpdf import FPDF
 
 # -----------------------------
 # API CONFIG
 # -----------------------------
-API_KEY = os.getenv("OPENROUTER_API_KEY")
+API_KEY = st.secrets["OPENROUTER_API_KEY"]
+
+st.write("connected:"bool(API_KEY))
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 
 FALLBACK_MODELS = [
