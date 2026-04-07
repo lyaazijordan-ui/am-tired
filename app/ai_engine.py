@@ -172,6 +172,59 @@ def auto_graph(df):
 
     return charts
 
+def suggest_graph(df):
+    numeric = df.select_dtypes(include=['number']).columns.tolist()
+    categorical = df.select_dtypes(exclude=['number']).columns.tolist()
+
+    suggestions = []
+
+    try:
+        # TIME SERIES
+        for col in df.columns:
+            if "date" in col.lower() or "time" in col.lower():
+                if numeric:
+                    suggestions.append(
+                        f"📈 Line Chart → Best for trends over time using '{col}'"
+                    )
+
+        # RELATIONSHIPS
+        if len(numeric) >= 2:
+            suggestions.append(
+                f"🔗 Scatter Plot → Shows relationship between '{numeric[0]}' and '{numeric[1]}'"
+            )
+
+        # DISTRIBUTION
+        if numeric:
+            suggestions.append(
+                f"📊 Histogram → Understand distribution of '{numeric[0]}'"
+            )
+
+        # OUTLIERS
+        if numeric:
+            suggestions.append(
+                f"📦 Box Plot → Detect outliers in '{numeric[0]}'"
+            )
+
+        # CATEGORY
+        if categorical:
+            suggestions.append(
+                f"📊 Bar Chart → Compare categories in '{categorical[0]}'"
+            )
+
+        # CORRELATION
+        if len(numeric) >= 2:
+            suggestions.append(
+                "🔥 Heatmap → Visualize correlations between numeric features"
+            )
+
+        if suggestions:
+            return "🧠 AI Graph Suggestions:\n\n" + "\n".join(suggestions)
+
+        return "No strong visualization suggestion found."
+
+    except Exception as e:
+        return f"Suggestion error: {str(e)}"
+
 
 # -----------------------------
 # 🧠 AUTO EXPLANATION
