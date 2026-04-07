@@ -9,7 +9,10 @@ import os
 # ------------------------------
 # --- AI Engine Configuration ---
 # ------------------------------
-API_KEY = os.getenv("OPENROUTER_API_KEY")
+API_KEY = st.secrets["OPENROUTER_API_KEY"]
+
+# quick test
+st.write("connected:", bool(API_KEY))
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 
 FALLBACK_MODELS = [
