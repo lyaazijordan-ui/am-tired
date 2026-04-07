@@ -31,7 +31,7 @@ if prompt:
     st.session_state.chat.append({"role": "user", "content": prompt})
 
     with st.chat_message("assistant"):
-        response = query_ai(prompt, df=df)
+        response = query_ai(user_question, context, df)
         st.write(response)
 
     st.session_state.chat.append({"role": "assistant", "content": response})
@@ -48,6 +48,7 @@ if charts:
 
     # AI Explanation
     st.subheader("🧠 AI Insights")
+st.write(explain_data(df))
 
     with st.spinner("AI analyzing your data..."):
         insight = explain_data(df)
