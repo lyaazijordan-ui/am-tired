@@ -1,3 +1,5 @@
+# ai_engine.py (FINAL GOD MODE)
+
 import os
 import requests
 import pandas as pd
@@ -9,7 +11,6 @@ from fpdf import FPDF
 # API CONFIG
 # -----------------------------
 API_KEY = os.getenv("OPENROUTER_API_KEY")
-
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 
 FALLBACK_MODELS = [
@@ -19,49 +20,74 @@ FALLBACK_MODELS = [
 ]
 
 # -----------------------------
-# LOCAL AI (NO INTERNET)
+# 🧠 LOCAL AI (GOD MODE)
 # -----------------------------
 def local_ai(prompt, df=None):
     prompt = prompt.lower()
 
-    if df is not None:
-        numeric_cols = df.select_dtypes(include=['number']).columns
+    if df is None:
+        return "Upload a dataset first."
 
-        try:
-            if "mean" in prompt:
-                return df[numeric_cols].mean().to_string()
+    numeric = df.select_dtypes(include=['number']).columns.tolist()
+    categorical = df.select_dtypes(exclude=['number']).columns.tolist()
 
-            if "max" in prompt:
-                return df[numeric_cols].max().to_string()
+    try:
+        # INTENT DETECTION
+        if any(x in prompt for x in ["summary", "overview", "describe"]):
+            return f"📊 Summary:\n{df.describe().to_string()}"
 
-            if "min" in prompt:
-                return df[numeric_cols].min().to_string()
+        if any(x in prompt for x in ["mean", "average"]):
+            return "📊 Averages:\n" + df[numeric].mean().to_string()
 
-            if "summary" in prompt:
-                return df.describe().to_string()
+        if "max" in prompt:
+            return "📈 Max values:\n" + df[numeric].max().to_string()
 
-            if "correlation" in prompt:
-                return df.corr(numeric_only=True).to_string()
+        if "min" in prompt:
+            return "📉 Min values:\n" + df[numeric].min().to_string()
 
-            if "columns" in prompt:
-                return str(list(df.columns))
+        if any(x in prompt for x in ["correlation", "relationship"]):
+            corr = df[numeric].corr()
+            return f"🔗 Correlation:\n{corr.to_string()}"
 
-            if "rows" in prompt:
-                return f"Rows: {df.shape[0]}, Columns: {df.shape[1]}"
+        if "trend" in prompt:
+            result = []
+            for col in numeric:
+                if df[col].iloc[-1] > df[col].iloc[0]:
+                    result.append(f"{col}: Increasing 📈")
+                else:
+                    result.append(f"{col}: Decreasing 📉")
+            return "\n".join(result)
 
-        except Exception as e:
-            return f"Local AI Error: {str(e)}"
+        if any(x in prompt for x in ["outlier", "anomaly"]):
+            report = []
+            for col in numeric:
+                mean = df[col].mean()
+                std = df[col].std()
+                outliers = df[(df[col] > mean + 2*std) | (df[col] < mean - 2*std)]
+                report.append(f"{col}: {len(outliers)} anomalies")
+            return "\n".join(report)
 
-    return "Local AI: I can summarize data, calculate stats, and detect trends."
+        if "important" in prompt:
+            variances = df[numeric].var()
+            return f"⭐ Most important column: {variances.idxmax()}"
+
+        return (
+            "🤖 I didn’t fully get that.\n\nTry:\n"
+            "- summary\n- trends\n- correlation\n- anomalies"
+        )
+
+    except Exception as e:
+        return f"Local AI Error: {str(e)}"
+
 
 # -----------------------------
-# MAIN AI FUNCTION
+# 🌐 HYBRID AI (API + LOCAL)
 # -----------------------------
-def query_ai(prompt, data_context="", df=None):
+def query_ai(prompt, context="", df=None):
     if not API_KEY:
         return local_ai(prompt, df)
 
-    full_prompt = f"Context: {data_context}\n\nQuestion: {prompt}"
+    full_prompt = f"{context}\n\nUser Question: {prompt}"
 
     headers = {
         "Authorization": f"Bearer {API_KEY}",
@@ -70,102 +96,64 @@ def query_ai(prompt, data_context="", df=None):
 
     for model in FALLBACK_MODELS:
         try:
-            payload = {
-                "model": model,
-                "messages": [
-                    {"role": "system", "content": "You are a professional data analyst."},
-                    {"role": "user", "content": full_prompt}
-                ],
-                "max_tokens": 500
-            }
-
-            response = requests.post(
+            res = requests.post(
                 OPENROUTER_URL,
                 headers=headers,
-                json=payload,
+                json={
+                    "model": model,
+                    "messages": [
+                        {"role": "system", "content": "You are a smart data analyst."},
+                        {"role": "user", "content": full_prompt}
+                    ]
+                },
                 timeout=15
             )
 
-            if response.status_code == 200:
-                result = response.json()
-                return result["choices"][0]["message"]["content"]
+            if res.status_code == 200:
+                return res.json()["choices"][0]["message"]["content"]
 
-        except Exception as e:
-            print(f"API error with {model}: {e}")
+        except:
             continue
 
     return local_ai(prompt, df)
 
-# -----------------------------
-# MEDICAL ANALYSIS (SAFE)
-# -----------------------------
-def medical_analysis(df):
-    try:
-        cols = list(df.columns)
-
-        prompt = f"""
-        Analyze this dataset for possible health-related insights.
-
-        Columns: {cols}
-
-        Look for:
-        - Risk patterns
-        - Trends
-        - Any unusual indicators
-
-        Disclaimer: Not medical advice.
-        """
-
-        return query_ai(prompt, df=df)
-
-    except Exception as e:
-        return f"Medical analysis error: {str(e)}"
 
 # -----------------------------
-# AUTO GRAPH (FIXED)
+# 📊 AUTO GRAPH ENGINE
 # -----------------------------
 def auto_graph(df):
     import plotly.express as px
     import plotly.figure_factory as ff
 
     charts = []
+    numeric = df.select_dtypes(include=['number']).columns.tolist()
+    categorical = df.select_dtypes(exclude=['number']).columns.tolist()
 
     try:
-        numeric = df.select_dtypes(include=['number']).columns.tolist()
-        categorical = df.select_dtypes(exclude=['number']).columns.tolist()
-
-        # LINE (time series)
+        # Line (time)
         for col in df.columns:
-            if "date" in col.lower() or "time" in col.lower():
-                if numeric:
-                    fig = px.line(df, x=col, y=numeric[0],
-                                  title=f"📈 Trend of {numeric[0]} over {col}")
-                    charts.append(fig)
-                    break
+            if "date" in col.lower():
+                charts.append(px.line(df, x=col, y=numeric[0]))
 
-        # SCATTER
+        # Scatter
         if len(numeric) >= 2:
-            charts.append(px.scatter(df, x=numeric[0], y=numeric[1],
-                                     title=f"🔗 {numeric[0]} vs {numeric[1]}"))
+            charts.append(px.scatter(df, x=numeric[0], y=numeric[1]))
 
-        # HISTOGRAM
+        # Histogram
         if numeric:
-            charts.append(px.histogram(df, x=numeric[0],
-                                       title=f"📊 Distribution of {numeric[0]}"))
+            charts.append(px.histogram(df, x=numeric[0]))
 
-        # BOXPLOT
+        # Box
         if numeric:
-            charts.append(px.box(df, y=numeric[0],
-                                 title=f"📦 Outliers in {numeric[0]}"))
+            charts.append(px.box(df, y=numeric[0]))
 
-        # BAR
+        # Bar
         if categorical:
             counts = df[categorical[0]].value_counts().reset_index()
             counts.columns = ["Category", "Count"]
-            charts.append(px.bar(counts, x="Category", y="Count",
-                                 title=f"📊 {categorical[0]} Distribution"))
+            charts.append(px.bar(counts, x="Category", y="Count"))
 
-        # HEATMAP (🔥 FIXED PROPERLY)
+        # Heatmap FIXED
         if len(numeric) >= 2:
             corr = df[numeric].corr()
             rounded = np.round(corr.values, 2)
@@ -177,88 +165,46 @@ def auto_graph(df):
                 annotation_text=rounded.astype(str),
                 showscale=True
             )
-
-            fig.update_layout(title="🔥 Correlation Heatmap")
             charts.append(fig)
 
     except Exception as e:
-        print("Auto graph error:", e)
+        print("Graph error:", e)
 
     return charts
 
+
 # -----------------------------
-# AI EXPLANATION (FIXED)
+# 🧠 AUTO EXPLANATION
 # -----------------------------
 def explain_data(df):
-    try:
-        summary = df.describe().to_string()
+    summary = df.describe().to_string()
+    return query_ai("Explain key insights from this data:\n" + summary, df=df)
 
-        prompt = f"""
-        Explain this dataset in simple terms:
-        - Key trends
-        - Patterns
-        - Insights
-
-        Data:
-        {summary}
-        """
-
-        return query_ai(prompt, df=df)
-
-    except Exception as e:
-        return f"Insight Error: {str(e)}"
 
 # -----------------------------
-# SIMPLE INSIGHT FUNCTION (FIXED)
-# -----------------------------
-def generate_insight(df, column):
-    try:
-        if column not in df.columns:
-            return f"Column '{column}' not found."
-
-        if not np.issubdtype(df[column].dtype, np.number):
-            return f"Column '{column}' is not numeric."
-
-        return f"""
-        📊 Insights for '{column}':
-        Mean: {df[column].mean():.2f}
-        Max: {df[column].max()}
-        Min: {df[column].min()}
-        """
-
-    except Exception as e:
-        return f"Insight error: {str(e)}"
-
-# -----------------------------
-# PREDICTIONS
+# 📈 PREDICTIONS
 # -----------------------------
 def predict_future(df, column, steps=5):
-    try:
-        y = df[column].values
-        X = np.arange(len(y)).reshape(-1, 1)
+    y = df[column].values
+    X = np.arange(len(y)).reshape(-1, 1)
 
-        model = LinearRegression()
-        model.fit(X, y)
+    model = LinearRegression()
+    model.fit(X, y)
 
-        future_X = np.arange(len(y), len(y) + steps).reshape(-1, 1)
-        return model.predict(future_X)
+    future = np.arange(len(y), len(y)+steps).reshape(-1, 1)
+    return model.predict(future)
 
-    except Exception as e:
-        return f"Prediction error: {str(e)}"
 
 def detect_anomalies(df, column):
-    try:
-        mean = df[column].mean()
-        std = df[column].std()
-        return df[(df[column] > mean + 2*std) | (df[column] < mean - 2*std)]
+    mean = df[column].mean()
+    std = df[column].std()
+    return df[(df[column] > mean + 2*std) | (df[column] < mean - 2*std)]
 
-    except Exception as e:
-        return f"Anomaly error: {str(e)}"
 
 # -----------------------------
-# PDF
+# 📄 PDF
 # -----------------------------
-def generate_pdf(filename, insights):
+def generate_pdf(filename, text):
     pdf = FPDF()
     pdf.add_page()
 
@@ -266,6 +212,6 @@ def generate_pdf(filename, insights):
     pdf.cell(0, 10, "AI Report", ln=True)
 
     pdf.set_font("Arial", size=10)
-    pdf.multi_cell(0, 8, str(insights))
+    pdf.multi_cell(0, 8, str(text))
 
     pdf.output(filename)
